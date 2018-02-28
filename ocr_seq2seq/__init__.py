@@ -1,0 +1,1 @@
+from .ocr_seq2seq import OCRSeq2Seq
