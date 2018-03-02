@@ -1,9 +1,8 @@
-mss
-pynput
 pillow
-pyqt5
-msgpack-python
-redis
-docker
 numpy
-prompt_toolkit
+tensorflow
+keras
+numpy
+editdistance
+matplotlib
+scikit-image
