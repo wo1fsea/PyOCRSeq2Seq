@@ -32,7 +32,7 @@ RNN_DENSE_SIZE = 32
 RNN_SIZE = 128
 MINIBATCH_SIZE = 256
 
-FONT_SET = ("arial.ttf", ) #, "times.ttf", "LSANS.TTF")
+FONT_SET = ("./fonts/arial.ttf", ) #, "times.ttf", "LSANS.TTF")
 
 
 def ctc_lambda_func(args):

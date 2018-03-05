@@ -9,6 +9,13 @@ Description:
     main.py
 ----------------------------------------------------------------------------"""
 
+import os
+
+font_path = os.path.abspath("./fonts")
+cmd = "export PATH=$PATH:{font_path}".format(font_path=font_path)
+print(cmd)
+os.system(cmd)
+
 import numpy as np
 from PIL import Image
 
