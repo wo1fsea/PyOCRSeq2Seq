@@ -9,10 +9,13 @@ Description:
     utils.py
 ----------------------------------------------------------------------------"""
 
+import os
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 from keras import backend as K
 from skimage.filters import threshold_otsu, threshold_yen
+
+FONT_FILE_SUFFIX = [".ttf"]
 
 
 def text_to_label(text, alphabet):
@@ -189,3 +192,14 @@ def get_input_data_shape(image_width, image_height, channel=1):
         return channel, image_width, image_height
     else:
         return image_width, image_height, channel
+
+
+def get_font_set_from_dir(dir_path):
+    font_set = []
+    for root, dirs, files in os.walk(dir_path):
+        for f in files:
+            file_path = os.path.join(root, f)
+            _, ext = os.path.splitext(f)
+            if ext.lower() in FONT_FILE_SUFFIX:
+                font_set.append(file_path)
+    return font_set

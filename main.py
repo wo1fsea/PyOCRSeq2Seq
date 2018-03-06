@@ -11,20 +11,17 @@ Description:
 
 import os
 
-font_path = os.path.abspath("./fonts")
-cmd = "export PATH=$PATH:{font_path}".format(font_path=font_path)
-print(cmd)
-os.system(cmd)
 
 import numpy as np
 from PIL import Image
 
 from ocr_seq2seq.ocr_model import OCRModel
+from ocr_seq2seq.utils import get_font_set_from_dir
 from ocr_seq2seq.utils import split_text_image, convert_image_to_input_data
 
 W = 256
 H = 32
-ocr_m = OCRModel(W, H)
+ocr_m = OCRModel(W, H, font_set=get_font_set_from_dir("./fonts/"))
 
 # predict
 # ocr_m.load_config_for_predict_model(r"D:\GITHUB\TheChineseRoom\ocr_model\checkpoint_27")
