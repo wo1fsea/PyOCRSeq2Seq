@@ -29,7 +29,7 @@ class ImageGenerator(object):
         self.width = width
         self.height = height
         self.font_set = font_set
-        self.font_size_range = (8, 64)
+        self.font_size_range = font_size_range
 
     def add_noise(self, image):
         row, col = image.shape
