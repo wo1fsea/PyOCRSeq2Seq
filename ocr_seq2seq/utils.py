@@ -32,7 +32,7 @@ def ctc_decode(y_preds, greedy=True, beam_width=128):
     return labels
 
 
-def _find_peeks(data, min_val=0, min_range=4):
+def _find_peeks(data, min_val=0, min_range=2):
     start = None
     peeks = []
     for i, val in enumerate(data):
@@ -112,12 +112,14 @@ def split_text_image(image, max_ratio=128 / 16):
         max_length = (end_y - start_y) * max_ratio
 
         for vp in vps:
-            if vp[1] - start_x > max_length:
+            for x in vp:
+                if x - start_x > max_length:
                     if last_x != start_x:
-                boxes[-1].append((start_x, start_y, last_x, end_y))
-                start_x = last_x
-            else:
-                last_x = vp[1]
+                        boxes[-1].append((start_x, start_y, last_x, end_y))
+                        start_x = last_x
+                    else:
+                        start_x = x
+                last_x = x
 
         if start_x != last_x:
             boxes[-1].append((start_x, start_y, last_x, end_y))
@@ -139,6 +141,7 @@ def convert_image_to_input_data(image, image_width, image_height):
     # image = image.crop(bbox)
 
     bbox = (0, 0, *image.size)
+    print(image_width, image_height)
     if bbox:
         x, y, x2, y2 = bbox
         w, h = x2 - x, y2 - y
