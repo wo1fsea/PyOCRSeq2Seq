@@ -113,6 +113,7 @@ def split_text_image(image, max_ratio=128 / 16):
 
         for vp in vps:
             if vp[1] - start_x > max_length:
+                    if last_x != start_x:
                 boxes[-1].append((start_x, start_y, last_x, end_y))
                 start_x = last_x
             else:
