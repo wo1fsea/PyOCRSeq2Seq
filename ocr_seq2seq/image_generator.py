@@ -11,6 +11,7 @@ Description:
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
+from .utils import convert_image_to_binary
 from keras.preprocessing import image as kpImage
 from scipy import ndimage
 import math
@@ -18,7 +19,7 @@ import random
 from keras import backend as K
 
 FONT_SIZE = 32
-FONT_SIZE_RANGE = (8, 65)
+FONT_SIZE_RANGE = (12, 65)
 ROTATION_DEGREE = 5
 
 
@@ -91,5 +92,7 @@ class ImageGenerator(object):
 
         if noise:
             image_array = self.add_noise(image_array)
+
+        image_array = convert_image_to_binary(image_array, False)
 
         return image_array

@@ -12,7 +12,7 @@ import numpy as np
 from .image_generator import ImageGenerator
 from .utils import text_to_label, convert_image_array_to_input_data, get_input_data_shape
 
-MAX_STRING_LEN = 12
+MAX_STRING_LEN = 32
 
 
 class DataGenerator(object):
@@ -42,7 +42,7 @@ class DataGenerator(object):
         return string
 
     def _get_input_data(self, text):
-        image = self.image_generator.generate(text, rotation=True, translate=True, noise=True)
+        image = self.image_generator.generate(text, rotation=True, translate=False, noise=True)
         return convert_image_array_to_input_data(image)
 
     def _get_batch_date(self):

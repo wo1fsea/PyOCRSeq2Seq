@@ -50,12 +50,13 @@ def _find_peeks(data, min_val=0, min_range=2):
     return peeks
 
 
-def _binary(image):
+def convert_image_to_binary(image, self_adapting=True):
     threshold = threshold_otsu(image)
     binary = image > threshold
 
-    if np.sum(binary) > binary.size / 2:
-        binary = 1 - binary
+    if self_adapting:
+        if np.sum(binary) > binary.size / 2:
+            binary = 1 - binary
 
     return np.uint8(binary * 255)
 
@@ -64,7 +65,7 @@ def split_char_from_text_image(image):
     image = image.filter(ImageFilter.SHARPEN)
 
     image_data = np.asarray(image.convert("L"), dtype=np.uint8)
-    image_data = _binary(image_data)
+    image_data = convert_image_to_binary(image_data)
 
     h_sum = np.sum(image_data, axis=1)
     hps = _find_peeks(h_sum)
@@ -93,7 +94,7 @@ def split_text_image(image, max_ratio=128 / 16):
     image = image.filter(ImageFilter.SHARPEN)
 
     image_data = np.asarray(image.convert("L"), dtype=np.uint8)
-    image_data = _binary(image_data)
+    image_data = convert_image_to_binary(image_data)
     image = Image.fromarray(image_data)
 
     h_sum = np.sum(image_data, axis=1)

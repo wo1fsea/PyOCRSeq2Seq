@@ -30,7 +30,7 @@ KERNEL_SIZE = (4, 4)
 POOL_SIZE = 2
 RNN_DENSE_SIZE = 32
 RNN_SIZE = 128
-MINIBATCH_SIZE = 256
+MINIBATCH_SIZE = 64
 
 FONT_SET = ("arial.ttf", )
 
@@ -276,6 +276,7 @@ class OCRModel(object):
         texts = []
         y_preds = self._predict_model.predict([input_data_batch], batch_size=input_data_batch.shape[0])
         labels = ctc_decode(y_preds)
+        # labels = ctc_decode(self._test_func([input_data_batch])[0])
         for label in labels:
             texts.append(label_to_text(label, self._alphabet))
         return texts
