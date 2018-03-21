@@ -19,7 +19,7 @@ from keras.layers.merge import concatenate, multiply
 from keras.models import Model
 from keras.layers.recurrent import GRU, LSTM
 from keras.optimizers import SGD
-import keras.callbacks
+from keras.callbacks import Callback, ModelCheckpoint
 
 from .data_generator import DataGenerator, MAX_STRING_LEN
 from .alphabet import ALPHABET_KEYBOARD as ALPHABET
@@ -32,7 +32,7 @@ RNN_DENSE_SIZE = 32
 RNN_SIZE = 128
 MINIBATCH_SIZE = 64
 
-FONT_SET = ("arial.ttf", )
+FONT_SET = ("arial.ttf",)
 
 
 def ctc_lambda_func(args):
@@ -40,7 +40,7 @@ def ctc_lambda_func(args):
     return K.ctc_batch_cost(labels, y_pred, input_length, label_length)
 
 
-class TrainingCallback(keras.callbacks.Callback):
+class TrainingCallback(Callback):
 
     def __init__(self, test_func, test_data_gen, alphabet, output_path="ocr_model", num_display_words=16):
         super(TrainingCallback, self).__init__()
@@ -91,24 +91,8 @@ class TrainingCallback(keras.callbacks.Callback):
         self._visual_test(epoch)
 
 
-class CheckpointSaver(keras.callbacks.Callback):
-    CHECKPOINT_FILE = "checkpoint_%d"
-
-    def __init__(self, checkpoint_path):
-        super(CheckpointSaver, self).__init__()
-        self._path = checkpoint_path
-
-    def save_checkpoint(self, model, epoch):
-        model.save_weights(os.path.join(self._path, self.CHECKPOINT_FILE % epoch))
-
-    def load_checkpoint(self, model, epoch):
-        model.load_weights(os.path.join(self._path, self.CHECKPOINT_FILE % epoch))
-
-    def _checkpoint(self, epoch):
-        self.save_checkpoint(self.model, epoch)
-
-    def on_epoch_end(self, epoch, logs={}):
-        self._checkpoint(epoch)
+OUTPUT_PATH = "ocr_model"
+CHECK_POINT_FILE = "weights_e{epoch:02d}-loss{val_loss:.2f}.hdf5"
 
 
 class OCRModel(object):
@@ -257,10 +241,14 @@ class OCRModel(object):
         self._test_func = K.function([input_data], [y_pred])
 
     def train(self, start_epoch=0, stop_epoch=10):
-        checkpoint_saver = CheckpointSaver("ocr_model")
+        if not os.path.exists(OUTPUT_PATH):
+            os.makedirs(OUTPUT_PATH)
 
-        if start_epoch > 0:
-            checkpoint_saver.load_checkpoint(self._train_model, start_epoch - 1)
+        checkpoint_saver = ModelCheckpoint(os.path.join(OUTPUT_PATH, CHECK_POINT_FILE), monitor='val_loss', verbose=0,
+                                           save_best_only=False, save_weights_only=True, mode='auto', period=1)
+
+        # if start_epoch > 0:
+        #     checkpoint_saver.load_checkpoint(self._train_model, start_epoch - 1)
 
         training_cb = TrainingCallback(self._test_func, self.data_generator.get_validate_data(), self._alphabet)
 
