@@ -9,8 +9,11 @@ Description:
     ocr_model.py
 ----------------------------------------------------------------------------"""
 import os
+import io
 import editdistance
 import pylab
+import tensorflow as tf
+
 from keras import backend as K
 from keras.layers.convolutional import Conv2D, MaxPooling2D
 from keras.layers import Input, Dense, Activation, Permute
@@ -19,7 +22,7 @@ from keras.layers.merge import concatenate, multiply
 from keras.models import Model
 from keras.layers.recurrent import GRU, LSTM
 from keras.optimizers import SGD
-from keras.callbacks import Callback, ModelCheckpoint
+from keras.callbacks import Callback, ModelCheckpoint, TensorBoard
 
 from .data_generator import DataGenerator, MAX_STRING_LEN
 from .alphabet import ALPHABET_KEYBOARD as ALPHABET
@@ -34,25 +37,52 @@ MINIBATCH_SIZE = 64
 
 FONT_SET = ("arial.ttf",)
 
+OUTPUT_PATH = "ocr_model"
+CHECK_POINT_FILE = "e{epoch:02d}_[loss{val_loss:.2f}]_weights.hdf5"
+
+LOG_PATH = "logs"
+
 
 def ctc_lambda_func(args):
     y_pred, labels, input_length, label_length = args
     return K.ctc_batch_cost(labels, y_pred, input_length, label_length)
 
 
-class TrainingCallback(Callback):
+class TrainingCallback(TensorBoard):
 
-    def __init__(self, test_func, test_data_gen, alphabet, output_path="ocr_model", num_display_words=16):
+    def __init__(self, test_func, test_data_gen, alphabet, logs_path=LOG_PATH, num_display_words=16):
         super(TrainingCallback, self).__init__()
         self.test_func = test_func
         self.test_data_gen = test_data_gen
         self.alphabet = alphabet
-        self.output_path = output_path
+        self.logs_path = logs_path
         self.num_display_words = num_display_words
-        if not os.path.exists(self.output_path):
-            os.makedirs(self.output_path)
+        if not os.path.exists(self.logs_path):
+            os.makedirs(self.logs_path)
 
-    def show_edit_distance(self, num):
+    def _write_image_data_to_logs(self, epoch, image_data):
+        image = tf.image.decode_png(image_data.getvalue(), channels=4)
+        image = tf.expand_dims(image, 0)
+
+        summary_op = tf.summary.image("visual test %d" % epoch, image)
+
+        summary = self.sess.run(summary_op)
+        self.writer.add_summary(summary)
+
+    def _write_simple_value_to_logs(self, epoch, name, value):
+        summary = tf.Summary()
+        summary_value = summary.value.add()
+        summary_value.simple_value = value
+        summary_value.tag = name
+        self.writer.add_summary(summary, epoch)
+
+    def _write_logs_data_to_logs(self, epoch, logs):
+        for name, value in logs.items():
+            if name in ['batch', 'size']:
+                continue
+            self._write_simple_value_to_logs(epoch, name, value.item())
+
+    def _sample_test_edit_distance(self, epoch, num):
         num_left = num
         mean_norm_ed = 0.0
         mean_ed = 0.0
@@ -68,11 +98,11 @@ class TrainingCallback(Callback):
             num_left -= num_proc
         mean_norm_ed = mean_norm_ed / num
         mean_ed = mean_ed / num
-        print('\nOut of %d samples:  Mean edit distance: %.3f Mean normalized edit distance: %0.3f'
-              % (num, mean_ed, mean_norm_ed))
+
+        self._write_simple_value_to_logs(epoch, "mean_ed", mean_ed)
+        self._write_simple_value_to_logs(epoch, "mean_norm_ed", mean_norm_ed)
 
     def _visual_test(self, epoch):
-        self.show_edit_distance(256)
         word_batch = next(self.test_data_gen)[0]
         y_preds = self.test_func([word_batch['image_input'][0:self.num_display_words]])[0]
         res = [label_to_text(label, self.alphabet) for label in ctc_decode(y_preds)]
@@ -84,15 +114,29 @@ class TrainingCallback(Callback):
             pylab.xlabel('Truth = \'%s\'\nDecoded = \'%s\'' % (truth, pred))
         fig = pylab.gcf()
         fig.set_size_inches(16, 32)
-        pylab.savefig(os.path.join(self.output_path, 'e%02d.png' % (epoch)))
+
+        buffer = io.BytesIO()
+        pylab.savefig(buffer, format='png')
+        buffer.seek(0)
+
+        self._write_image_data_to_logs(epoch, buffer)
+
         pylab.close()
 
+    def set_model(self, model):
+        self.model = model
+        self.sess = K.get_session()
+        self.writer = tf.summary.FileWriter(self.logs_path, self.sess.graph)
+
     def on_epoch_end(self, epoch, logs={}):
+        self._sample_test_edit_distance(epoch, MINIBATCH_SIZE)
         self._visual_test(epoch)
+        self._write_logs_data_to_logs(epoch, logs)
 
+        self.writer.flush()
 
-OUTPUT_PATH = "ocr_model"
-CHECK_POINT_FILE = "weights_e{epoch:02d}-loss{val_loss:.2f}.hdf5"
+    def on_train_end(self, logs=None):
+        self.writer.close()
 
 
 class OCRModel(object):
