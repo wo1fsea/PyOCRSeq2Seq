@@ -4,5 +4,5 @@ tensorflow
 keras
 numpy
 editdistance
-matplotlib
+matplotlib == 2.1.0
 scikit-image
