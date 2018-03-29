@@ -12,7 +12,7 @@ import numpy as np
 from .image_generator import ImageGenerator
 from .utils import text_to_label, convert_image_array_to_input_data, get_input_data_shape
 
-MAX_STRING_LEN = 32
+MAX_STRING_LEN = 16
 
 
 class DataGenerator(object):
@@ -49,7 +49,7 @@ class DataGenerator(object):
         input_data_shape = get_input_data_shape(self._image_width, self._image_height, 1)
         X_data = np.ones([self._minibatch_size, *input_data_shape])
 
-        label = np.ones([self._minibatch_size, MAX_STRING_LEN])
+        label = np.ones([self._minibatch_size, self._ouput_length])
         output_length = np.zeros([self._minibatch_size, 1])
         label_length = np.zeros([self._minibatch_size, 1])
 

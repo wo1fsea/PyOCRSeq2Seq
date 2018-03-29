@@ -148,7 +148,7 @@ class OCRModel(object):
 
         self._image_width = image_width
         self._image_height = image_height
-        self._output_length = round(image_width // POOL_SIZE ** 2)
+        self._output_length = round(image_width // POOL_SIZE ** 3)
         self._alphabet = alphabet
         self._font_set = font_set
         self._minibatch_size = minibatch_size
@@ -177,8 +177,14 @@ class OCRModel(object):
                        name='conv2')(inner)
         inner = MaxPooling2D(pool_size=(POOL_SIZE, POOL_SIZE), name='max2')(inner)
 
+        # CNN3
+        # inner = Conv2D(CNN_FILTER_NUM, KERNEL_SIZE, padding='same',
+        #                activation=act, kernel_initializer='he_normal',
+        #                name='conv3')(inner)
+        # inner = MaxPooling2D(pool_size=(POOL_SIZE, POOL_SIZE), name='max3')(inner)
+
         conv_to_rnn_dims = (
-            self._image_width // (POOL_SIZE ** 2), (self._image_height // (POOL_SIZE ** 2)) * CNN_FILTER_NUM)
+            self._image_width // (POOL_SIZE ** 3), (self._image_height // (POOL_SIZE ** 3)) * CNN_FILTER_NUM)
         inner = Reshape(target_shape=conv_to_rnn_dims, name='reshape')(inner)
 
         # cuts down input size going into RNN:
@@ -207,7 +213,7 @@ class OCRModel(object):
         # gru_decoder = GRU(img_gen.get_output_size(), return_sequences=True, kernel_initializer='he_normal', name='gru_decoder')(attention)
         y_pred = Activation('softmax', name='softmax')(attention)
 
-        labels = Input(name='label', shape=[MAX_STRING_LEN], dtype='float32')
+        labels = Input(name='label', shape=[self._output_length], dtype='float32')
         input_length = Input(name='output_length', shape=[1], dtype='int64')
         label_length = Input(name='label_length', shape=[1], dtype='int64')
         # Keras doesn't currently support loss funcs with extra parameters
@@ -237,8 +243,13 @@ class OCRModel(object):
                        name='conv2')(inner)
         inner = MaxPooling2D(pool_size=(POOL_SIZE, POOL_SIZE), name='max2')(inner)
 
+        inner = Conv2D(CNN_FILTER_NUM, KERNEL_SIZE, padding='same',
+                       activation=act, kernel_initializer='he_normal',
+                       name='conv3')(inner)
+        inner = MaxPooling2D(pool_size=(POOL_SIZE, POOL_SIZE), name='max3')(inner)
+
         conv_to_rnn_dims = (
-            self._image_width // (POOL_SIZE ** 2), (self._image_height // (POOL_SIZE ** 2)) * CNN_FILTER_NUM)
+            self._image_width // (POOL_SIZE ** 3), (self._image_height // (POOL_SIZE ** 3)) * CNN_FILTER_NUM)
         inner = Reshape(target_shape=conv_to_rnn_dims, name='reshape')(inner)
 
         # cuts down input size going into RNN:
@@ -250,16 +261,16 @@ class OCRModel(object):
         gru_1b = GRU(RNN_SIZE, return_sequences=True, go_backwards=True, kernel_initializer='he_normal', name='gru1_b')(
             inner)
 
-        code = concatenate([gru_1, gru_1b])
-        inner = Permute((2, 1))(code)
-        inner = Dense(self._output_length, activation='softmax')(inner)
-        attention = Permute((2, 1), name='attention_vec')(inner)
-        code = multiply([code, attention], name='attention_mul')
-
-        # gru1_merged = add([gru_1, gru_1b])
-        gru_2 = GRU(RNN_SIZE, return_sequences=True, kernel_initializer='he_normal', name='gru2')(code)
-        gru_2b = GRU(RNN_SIZE, return_sequences=True, go_backwards=True, kernel_initializer='he_normal', name='gru2_b')(
-            code)
+        # code = concatenate([gru_1, gru_1b])
+        # inner = Permute((2, 1))(code)
+        # inner = Dense(self._output_length, activation='softmax')(inner)
+        # attention = Permute((2, 1), name='attention_vec')(inner)
+        # code = multiply([code, attention], name='attention_mul')
+        #
+        # # gru1_merged = add([gru_1, gru_1b])
+        # gru_2 = GRU(RNN_SIZE, return_sequences=True, kernel_initializer='he_normal', name='gru2')(code)
+        # gru_2b = GRU(RNN_SIZE, return_sequences=True, go_backwards=True, kernel_initializer='he_normal', name='gru2_b')(
+        #     code)
 
         # transforms RNN output to character activations:
         attention = Dense(len(self._alphabet), kernel_initializer='he_normal', name='dense2')(
@@ -267,7 +278,7 @@ class OCRModel(object):
         # gru_decoder = GRU(img_gen.get_output_size(), return_sequences=True, kernel_initializer='he_normal', name='gru_decoder')(attention)
         y_pred = Activation('softmax', name='softmax')(attention)
 
-        labels = Input(name='label', shape=[MAX_STRING_LEN], dtype='float32')
+        labels = Input(name='label', shape=[self._output_length], dtype='float32')
         input_length = Input(name='output_length', shape=[1], dtype='int64')
         label_length = Input(name='label_length', shape=[1], dtype='int64')
         # Keras doesn't currently support loss funcs with extra parameters
