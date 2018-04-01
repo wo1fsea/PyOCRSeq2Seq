@@ -26,6 +26,6 @@ ALPHABET_KEYBOARD = alphabet_str2tuple("1234567890-="
                                        "ZXCVBNM<>?"
                                        " ")
 
-ALPHABET_LOW_CASE_LETTER = alphabet_str2tuple('abcdefghijklmnopqrstuvwxyz ')
-ALPHABET_CAPITAL_LETTER = alphabet_str2tuple('ABCDEFGHIJKLMNOPQRSTUVWXYZ ')
+ALPHABET_LOW_CASE_LETTER = alphabet_str2tuple("abcdefghijklmnopqrstuvwxyz ")
+ALPHABET_CAPITAL_LETTER = alphabet_str2tuple("ABCDEFGHIJKLMNOPQRSTUVWXYZ ")
 ALPHABET_NUM = alphabet_str2tuple("+-1234567890.,")

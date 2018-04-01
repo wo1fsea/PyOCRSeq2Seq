@@ -170,7 +170,7 @@ def convert_input_data_to_image(input_data):
 
 
 def convert_input_data_to_image_array(input_data):
-    if K.image_data_format() == 'channels_first':
+    if K.image_data_format() == "channels_first":
         temp_data = input_data[0, :, :]
     else:
         temp_data = input_data[:, :, 0]
@@ -184,7 +184,7 @@ def convert_image_array_to_input_data(image_array):
     temp_data = image_array.T
     temp_data = temp_data.astype(np.float32) / 255
 
-    if K.image_data_format() == 'channels_first':
+    if K.image_data_format() == "channels_first":
         temp_data = np.expand_dims(temp_data, 0)
     else:
         temp_data = np.expand_dims(temp_data, 2)
@@ -193,7 +193,7 @@ def convert_image_array_to_input_data(image_array):
 
 
 def get_input_data_shape(image_width, image_height, channel=1):
-    if K.image_data_format() == 'channels_first':
+    if K.image_data_format() == "channels_first":
         return channel, image_width, image_height
     else:
         return image_width, image_height, channel

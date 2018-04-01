@@ -67,13 +67,13 @@ class DataGenerator(object):
             source_str.append(text)
 
         inputs = {
-            'image_input': X_data,
-            'label': label,
-            'output_length': output_length,
-            'label_length': label_length,
-            'source_str': source_str,
+            "image_input": X_data,
+            "label": label,
+            "output_length": output_length,
+            "label_length": label_length,
+            "source_str": source_str,
         }
-        outputs = {'ctc': np.zeros([self._minibatch_size])}  # dummy data for dummy loss function
+        outputs = {"ctc": np.zeros([self._minibatch_size])}  # dummy data for dummy loss function
         return inputs, outputs
 
     def get_validate_data(self):
