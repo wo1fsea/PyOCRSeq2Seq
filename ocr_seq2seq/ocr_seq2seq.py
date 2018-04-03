@@ -9,6 +9,8 @@ Description:
     ocr_seq2seq.py
 ----------------------------------------------------------------------------"""
 import numpy as np
+from PIL import Image
+
 from .ocr_model import OCRModel
 from .utils import split_text_image, convert_image_to_input_data, convert_input_data_to_image
 
@@ -21,7 +23,7 @@ class OCRSeq2Seq(object):
     def __init__(self):
         super(OCRSeq2Seq, self).__init__()
         self._ocr_model = OCRModel(IMAGE_WIDTH, IMAGE_HEIGHT)
-        self._ocr_model.load_config_for_predict_model(r"D:\GITHUB\TheChineseRoom\ocr_model\checkpoint_256x32_1layer_bGRU")
+        self._ocr_model.load_config_for_predict_model(r"D:\GITHUB\PyOCRSeq2Seq\ocr_model\e135_[loss3.67]_weights.hdf5")
 
     def image_to_string(self, image):
         imgs = split_text_image(image, IMAGE_WIDTH / IMAGE_HEIGHT)

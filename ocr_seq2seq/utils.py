@@ -91,7 +91,9 @@ def split_char_from_text_image(image):
 
 
 def split_text_image(image, max_ratio=128 / 16):
-    image = image.filter(ImageFilter.SHARPEN)
+    image = image.resize((image.size[0] * 2, image.size[1] * 2), Image.NEAREST)
+
+    # image = image.filter(ImageFilter.SHARPEN)
 
     image_data = np.asarray(image.convert("L"), dtype=np.uint8)
     image_data = convert_image_to_binary(image_data)
@@ -142,7 +144,6 @@ def convert_image_to_input_data(image, image_width, image_height):
     # image = image.crop(bbox)
 
     bbox = (0, 0, *image.size)
-    print(image_width, image_height)
     if bbox:
         x, y, x2, y2 = bbox
         w, h = x2 - x, y2 - y
@@ -156,10 +157,11 @@ def convert_image_to_input_data(image, image_width, image_height):
             w = round(w / h * image_height)
             h = round(image_height)
 
-        image = image.resize((w, h), Image.LANCZOS)
+        image = image.resize((w, h), Image.BILINEAR)
         image_tmp.paste(image, box=(x, y, x + w, y + h))
 
     image_array = np.asarray(image_tmp, dtype=np.uint8)
+    image_array = convert_image_to_binary(image_array, False)
     input_data = convert_image_array_to_input_data(image_array)
     return input_data
 
