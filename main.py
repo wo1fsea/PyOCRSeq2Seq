@@ -12,7 +12,7 @@ Description:
 from PIL import Image
 
 from ocr_seq2seq.ocr_seq2seq import OCRSeq2Seq
-img = Image.open("C:/Users/wo1fsea/Desktop/ScreenClip.png")
+img = Image.open("/Users/huangquanyong/Desktop/screenshot.png")
 ocr = OCRSeq2Seq()
 print(ocr.image_to_string(img))
 
