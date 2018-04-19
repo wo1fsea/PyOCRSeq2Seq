@@ -157,73 +157,70 @@ class OCRModel(object):
                                             font_set=self._font_set,
                                             alphabet=self._alphabet)
 
-        self._init_model()
+        self._init_attention_model()
 
     def _init_attention_model(self):
-        act = "relu"
+        padding = "same"
+        activation = "relu"
+        k_initializer = "he_normal"
+
         input_data_shape = get_input_data_shape(self._image_width, self._image_height, 1)
         input_data = Input(name="image_input", shape=input_data_shape, dtype="float32")
 
-        # CNN1
-        inner = Conv2D(CNN_FILTER_NUM, KERNEL_SIZE, padding="same",
-                       activation=act, kernel_initializer="he_normal",
+        conv1 = Conv2D(CNN_FILTER_NUM, KERNEL_SIZE, padding=padding,
+                       activation=activation, kernel_initializer=k_initializer,
                        name="conv1")(input_data)
-        inner = MaxPooling2D(pool_size=(POOL_SIZE, POOL_SIZE), name="max1")(inner)
 
-        # CNN2
-        inner = Conv2D(CNN_FILTER_NUM, KERNEL_SIZE, padding="same",
-                       activation=act, kernel_initializer="he_normal",
-                       name="conv2")(inner)
-        inner = MaxPooling2D(pool_size=(POOL_SIZE, POOL_SIZE), name="max2")(inner)
+        max1 = MaxPooling2D(pool_size=(POOL_SIZE, POOL_SIZE), name="max1")(conv1)
 
-        # CNN3
-        # inner = Conv2D(CNN_FILTER_NUM, KERNEL_SIZE, padding="same",
-        #                activation=act, kernel_initializer="he_normal",
-        #                name="conv3")(inner)
-        # inner = MaxPooling2D(pool_size=(POOL_SIZE, POOL_SIZE), name="max3")(inner)
+        conv2 = Conv2D(CNN_FILTER_NUM, KERNEL_SIZE, padding=padding,
+                       activation=activation, kernel_initializer=k_initializer,
+                       name="conv2")(max1)
 
-        conv_to_rnn_dims = (
-            self._image_width // (POOL_SIZE ** 3), (self._image_height // (POOL_SIZE ** 3)) * CNN_FILTER_NUM)
-        inner = Reshape(target_shape=conv_to_rnn_dims, name="reshape")(inner)
+        max2 = MaxPooling2D(pool_size=(POOL_SIZE, POOL_SIZE), name="max2")(conv2)
 
-        # cuts down input size going into RNN:
-        inner = Dense(RNN_DENSE_SIZE, activation=act, name="dense1")(inner)
+        conv3 = Conv2D(CNN_FILTER_NUM, KERNEL_SIZE, padding=padding,
+                       activation=activation, kernel_initializer=k_initializer,
+                       name="conv3")(max2)
 
-        # Two layers of bidirectional GRUs
-        # GRU seems to work as well, if not better than LSTM:
-        gru_1 = GRU(RNN_SIZE, return_sequences=True, kernel_initializer="he_normal", name="gru1")(inner)
-        gru_1b = GRU(RNN_SIZE, return_sequences=True, go_backwards=True, kernel_initializer="he_normal", name="gru1_b")(
-            inner)
+        max3 = MaxPooling2D(pool_size=(POOL_SIZE, POOL_SIZE), name="max3")(conv3)
 
-        code = concatenate([gru_1, gru_1b])
+        conv_to_rnn_dims = (self._image_width // (POOL_SIZE ** 3),
+                            (self._image_height // (POOL_SIZE ** 3)) * CNN_FILTER_NUM)
+        reshape = Reshape(target_shape=conv_to_rnn_dims, name="reshape")(max3)
+
+        dense1 = Dense(RNN_DENSE_SIZE, activation=activation, name="dense1")(reshape)
+
+        gru1 = GRU(RNN_SIZE, return_sequences=True, kernel_initializer='he_normal', name='gru1')(dense1)
+        gru1_b = GRU(RNN_SIZE, return_sequences=True, go_backwards=True, kernel_initializer='he_normal', name='gru1_b')(
+            dense1)
+
+        code = concatenate([gru1, gru1_b])
+
         inner = Permute((2, 1))(code)
         inner = Dense(self._output_length, activation="softmax")(inner)
         attention = Permute((2, 1), name="attention_vec")(inner)
         code = multiply([code, attention], name="attention_mul")
 
-        # gru1_merged = add([gru_1, gru_1b])
-        gru_2 = GRU(RNN_SIZE, return_sequences=True, kernel_initializer="he_normal", name="gru2")(code)
-        gru_2b = GRU(RNN_SIZE, return_sequences=True, go_backwards=True, kernel_initializer="he_normal", name="gru2_b")(
+        gru2 = GRU(RNN_SIZE, return_sequences=True, kernel_initializer="he_normal", name="gru2")(code)
+        gru2_b = GRU(RNN_SIZE, return_sequences=True, go_backwards=True, kernel_initializer="he_normal", name="gru2_b")(
             code)
 
-        # transforms RNN output to character activations:
-        attention = Dense(len(self._alphabet), kernel_initializer="he_normal", name="dense2")(
-            concatenate([gru_2, gru_2b]))
-        # gru_decoder = GRU(img_gen.get_output_size(), return_sequences=True, kernel_initializer="he_normal", name="gru_decoder")(attention)
-        y_pred = Activation("softmax", name="softmax")(attention)
+        dense2 = Dense(len(self._alphabet), kernel_initializer="he_normal", name="dense2")(concatenate([gru2, gru2_b]))
+        y_pred = Activation("softmax", name="softmax")(dense2)
 
-        labels = Input(name="label", shape=[self._output_length], dtype="float32")
+        label = Input(name="label", shape=[self._output_length], dtype="float32")
         input_length = Input(name="output_length", shape=[1], dtype="int64")
         label_length = Input(name="label_length", shape=[1], dtype="int64")
         # Keras doesn"t currently support loss funcs with extra parameters
         # so CTC loss is implemented in a lambda layer
-        loss_out = Lambda(ctc_lambda_func, output_shape=(1,), name="ctc")([y_pred, labels, input_length, label_length])
+        loss_out = Lambda(ctc_lambda_func, output_shape=(1,), name="ctc")([y_pred, label, input_length, label_length])
 
         # clipnorm seems to speeds up convergence
         sgd = SGD(lr=0.02, decay=1e-6, momentum=0.9, nesterov=True, clipnorm=5)
 
         self._predict_model = Model(inputs=input_data, outputs=y_pred)
-        self._train_model = Model(inputs=[input_data, labels, input_length, label_length], outputs=loss_out)
+        self._train_model = Model(inputs=[input_data, label, input_length, label_length], outputs=loss_out)
         # the loss calc occurs elsewhere, so use a dummy lambda func for the loss
         self._train_model.compile(loss={"ctc": lambda y_true, y_pred: y_pred}, optimizer=sgd)
         self._train_model.summary()
