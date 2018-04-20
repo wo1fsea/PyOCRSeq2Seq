@@ -11,14 +11,13 @@ Description:
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
-from .utils import convert_image_to_binary
+from .utils import convert_image_to_binary, get_random_rgb_color
 from keras.preprocessing import image as kpImage
 from scipy import ndimage
 import math
 import random
 from keras import backend as K
 
-FONT_SIZE = 32
 FONT_SIZE_RANGE = (12, 65)
 ROTATION_DEGREE = 5
 
@@ -43,7 +42,7 @@ class ImageGenerator(object):
         noisy[noisy > 255] = 255
         return noisy.astype(np.uint8)
 
-    def generate(self, string, background=True, rotation=False, translate=False, noise=False):
+    def generate(self, string, background=True, rotation=False, translate=False, noise=False, random_color=True):
         """
 
         :param string:
@@ -56,16 +55,25 @@ class ImageGenerator(object):
         font = np.random.choice(self.font_set)
         font_size = np.random.randint(self.font_size_range[0], self.font_size_range[1])
 
+        background_color = get_random_rgb_color() if random_color else 0x000000
+        font_color = get_random_rgb_color() if random_color else 0xFFFFFF
+
+        rotation_degree = ROTATION_DEGREE * (np.random.random() - 0.5) * 2 if rotation else 0
+
         image = Image.new(mode="RGB", size=(self.width, self.height), color=0xFFFFFF if background else 0)
+
         image_tmp = Image.new(mode="RGB", size=(font_size * len(string), 2 * font_size))
         draw = ImageDraw.Draw(image_tmp)
         font = ImageFont.truetype(font, font_size)
-        draw.text((0, 0), string, font=font)
-
-        if rotation:
-            image_tmp = image_tmp.rotate(ROTATION_DEGREE * (np.random.random() - 0.5) * 2, expand=True)
+        draw.text((0, 0), string, font=font, fill=font_color)
+        image_tmp = image_tmp.rotate(rotation_degree, expand=True)
 
         bbox = image_tmp.getbbox()
+
+        image_tmp = Image.new(mode="RGB", size=(font_size * len(string), 2 * font_size), color=background_color)
+        draw = ImageDraw.Draw(image_tmp)
+        draw.text((0, 0), string, font=font, fill=font_color)
+        image_tmp = image_tmp.rotate(rotation_degree, expand=True)
 
         if bbox:
             bbox = bbox[0] - 1, bbox[1] - 1, bbox[2] + 1, bbox[3] + 1
@@ -93,6 +101,6 @@ class ImageGenerator(object):
         if noise:
             image_array = self.add_noise(image_array)
 
-        image_array = convert_image_to_binary(image_array, False)
+        # image_array = convert_image_to_binary(image_array, False)
 
         return image_array

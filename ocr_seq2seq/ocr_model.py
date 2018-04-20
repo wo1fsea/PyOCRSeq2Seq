@@ -157,7 +157,7 @@ class OCRModel(object):
                                             font_set=self._font_set,
                                             alphabet=self._alphabet)
 
-        self._init_attention_model()
+        self._init_bidirection_gru_model()
 
     def _init_attention_model(self):
         padding = "same"
@@ -226,7 +226,7 @@ class OCRModel(object):
         self._train_model.summary()
         self._test_func = K.function([input_data], [y_pred])
 
-    def _init_model(self):
+    def _init_double_bidirection_gru_model(self):
         padding = "same"
         activation = "relu"
         k_initializer = "he_normal"
@@ -267,6 +267,62 @@ class OCRModel(object):
             gru1_merged)
 
         dense2 = Dense(len(self._alphabet), kernel_initializer="he_normal", name="dense2")(concatenate([gru2, gru2_b]))
+        y_pred = Activation("softmax", name="softmax")(dense2)
+
+        label = Input(name="label", shape=[self._output_length], dtype="float32")
+        input_length = Input(name="output_length", shape=[1], dtype="int64")
+        label_length = Input(name="label_length", shape=[1], dtype="int64")
+        # Keras doesn"t currently support loss funcs with extra parameters
+        # so CTC loss is implemented in a lambda layer
+        loss_out = Lambda(ctc_lambda_func, output_shape=(1,), name="ctc")([y_pred, label, input_length, label_length])
+
+        # clipnorm seems to speeds up convergence
+        sgd = SGD(lr=0.02, decay=1e-6, momentum=0.9, nesterov=True, clipnorm=5)
+
+        self._predict_model = Model(inputs=input_data, outputs=y_pred)
+        self._train_model = Model(inputs=[input_data, label, input_length, label_length], outputs=loss_out)
+        # the loss calc occurs elsewhere, so use a dummy lambda func for the loss
+        self._train_model.compile(loss={"ctc": lambda y_true, y_pred: y_pred}, optimizer=sgd)
+        self._train_model.summary()
+        self._test_func = K.function([input_data], [y_pred])
+
+    def _init_bidirection_gru_model(self):
+        padding = "same"
+        activation = "relu"
+        k_initializer = "he_normal"
+
+        input_data_shape = get_input_data_shape(self._image_width, self._image_height, 1)
+        input_data = Input(name="image_input", shape=input_data_shape, dtype="float32")
+
+        conv1 = Conv2D(CNN_FILTER_NUM, KERNEL_SIZE, padding=padding,
+                       activation=activation, kernel_initializer=k_initializer,
+                       name="conv1")(input_data)
+
+        max1 = MaxPooling2D(pool_size=(POOL_SIZE, POOL_SIZE), name="max1")(conv1)
+
+        conv2 = Conv2D(CNN_FILTER_NUM, KERNEL_SIZE, padding=padding,
+                       activation=activation, kernel_initializer=k_initializer,
+                       name="conv2")(max1)
+
+        max2 = MaxPooling2D(pool_size=(POOL_SIZE, POOL_SIZE), name="max2")(conv2)
+
+        conv3 = Conv2D(CNN_FILTER_NUM, KERNEL_SIZE, padding=padding,
+                       activation=activation, kernel_initializer=k_initializer,
+                       name="conv3")(max2)
+
+        max3 = MaxPooling2D(pool_size=(POOL_SIZE, POOL_SIZE), name="max3")(conv3)
+
+        conv_to_rnn_dims = (self._image_width // (POOL_SIZE ** 3),
+                            (self._image_height // (POOL_SIZE ** 3)) * CNN_FILTER_NUM)
+        reshape = Reshape(target_shape=conv_to_rnn_dims, name="reshape")(max3)
+
+        dense1 = Dense(RNN_DENSE_SIZE, activation=activation, name="dense1")(reshape)
+
+        gru1 = GRU(RNN_SIZE, return_sequences=True, kernel_initializer='he_normal', name='gru1')(dense1)
+        gru1_b = GRU(RNN_SIZE, return_sequences=True, go_backwards=True, kernel_initializer='he_normal', name='gru1_b')(
+            dense1)
+
+        dense2 = Dense(len(self._alphabet), kernel_initializer="he_normal", name="dense2")(concatenate([gru1, gru1_b]))
         y_pred = Activation("softmax", name="softmax")(dense2)
 
         label = Input(name="label", shape=[self._output_length], dtype="float32")
