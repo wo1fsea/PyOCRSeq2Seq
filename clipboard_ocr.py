@@ -1,5 +1,15 @@
-from PIL import ImageGrab
+# -*- coding: utf-8 -*-
+"""----------------------------------------------------------------------------
+Author:
+    Huang Quanyong (wo1fSea)
+    quanyongh@foxmail.com
+Date:
+    2018/4/20
+Description:
+    clipboard_ocr.py
+----------------------------------------------------------------------------"""
 
+from PIL import ImageGrab
 from ocr_seq2seq.ocr_seq2seq import OCRSeq2Seq
 
 ocr = OCRSeq2Seq()

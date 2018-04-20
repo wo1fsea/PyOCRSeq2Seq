@@ -56,7 +56,10 @@ class ImageGenerator(object):
         font_size = np.random.randint(self.font_size_range[0], self.font_size_range[1])
 
         background_color = get_random_rgb_color() if random_color else 0x000000
-        font_color = get_random_rgb_color() if random_color else 0xFFFFFF
+
+        b = int(background_color[1:], base=16)
+        br, bg, bb = b / 0x10000, b / 0x100 % 0x100, b % 0x100
+        font_color = 0x000000 if br * 0.299 + bg * 0.587 + bb * 0.114 > 0xFF / 2 else 0xFFFFFF
 
         rotation_degree = ROTATION_DEGREE * (np.random.random() - 0.5) * 2 if rotation else 0
 
@@ -65,7 +68,7 @@ class ImageGenerator(object):
         image_tmp = Image.new(mode="RGB", size=(font_size * len(string), 2 * font_size))
         draw = ImageDraw.Draw(image_tmp)
         font = ImageFont.truetype(font, font_size)
-        draw.text((0, 0), string, font=font, fill=font_color)
+        draw.text((0, 0), string, font=font)
         image_tmp = image_tmp.rotate(rotation_degree, expand=True)
 
         bbox = image_tmp.getbbox()
@@ -94,6 +97,9 @@ class ImageGenerator(object):
             image_tmp = image_tmp.resize((w, h))  # , Image.LANCZOS)
 
             image.paste(image_tmp, box=(x, y, x + w, y + h))
+        else:
+            image_tmp.show()
+            exit()
 
         image = image.convert(mode="L")
         image_array = np.asarray(image, dtype=np.uint8)
